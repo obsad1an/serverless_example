@@ -1,0 +1,184 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta name="viewport" content="width=device-width">
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="css/site.css" rel="stylesheet" />
+    <title>Azure SignalR Group Chat</title>
+</head>
+<body>
+    <h2 class="text-center" style="margin-top: 0; padding-top: 30px; padding-bottom: 30px;">Azure SignalR Group Chat</h2>
+    <div class="container" style="height: calc(100% - 110px);">
+        <div id="messages" style="background-color: whitesmoke; "></div>
+        <div style="width: 100%; border-left-style: ridge; border-right-style: ridge;">
+            <textarea id="message"
+                      style="width: 100%; padding: 5px 10px; border-style: hidden;"
+                      placeholder="Type message and press Enter to send..."></textarea>
+        </div>
+        <div style="overflow: auto; border-style: ridge; border-top-style: hidden;">
+            <button class="btn-warning pull-right" id="echo">Echo</button>
+            <button class="btn-success pull-right" id="sendmessage">Send</button>
+            <button class="btn-success pull-right" id="subscribegroup">Subscribe</button>
+            <button class="btn-success pull-right" id="unsubscribegroup">Unsubscribe</button>
+        </div>
+    </div>
+    <div class="modal alert alert-danger fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>Connection Error...</div>
+                    <div><strong style="font-size: 1.5em;">Hit Refresh/F5</strong> to rejoin. ;)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Reference the SignalR library. -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@aspnet/signalr@1.1.0/dist/browser/signalr.min.js"></script>
+
+    <!--Add script to update the page and send messages.-->
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+
+            function generateRandomName() {
+                return Math.random().toString(36).substring(2, 10);
+            }
+
+            // Get the user name and store it to prepend to messages.
+            var username = generateRandomName();
+            var promptMessage = 'Enter your name:';
+            do {
+                username = prompt(promptMessage, username);
+                if (!username || username.startsWith('_') || username.indexOf('<') > -1 || username.indexOf('>') > -1) {
+                    username = '';
+                    promptMessage = 'Invalid input. Enter your name:';
+                }
+            } while(!username)
+
+            // Set initial focus to message input box.
+            var messageInput = document.getElementById('message');
+            messageInput.focus();
+
+            function createMessageEntry(encodedName, encodedMsg) {
+                var entry = document.createElement('div');
+                entry.classList.add("message-entry");
+                if (encodedName === "_SYSTEM_") {
+                    entry.innerHTML = encodedMsg;
+                    entry.classList.add("text-center");
+                    entry.classList.add("system-message");
+                } else if (encodedName === "_BROADCAST_") {
+                    entry.classList.add("text-center");
+                    entry.innerHTML = `<div class="text-center broadcast-message">${encodedMsg}</div>`;
+                } else if (encodedName === username) {
+                    entry.innerHTML = `<div class="message-avatar pull-right">${encodedName}</div>` +
+                        `<div class="message-content pull-right">${encodedMsg}<div>`;
+                } else {
+                    entry.innerHTML = `<div class="message-avatar pull-left">${encodedName}</div>` +
+                        `<div class="message-content pull-left">${encodedMsg}<div>`;
+                }
+                return entry;
+            }
+
+            function bindConnectionMessage(connection) {
+                var messageCallback = function(name, message) {
+                    if (!message) return;
+                    // Html encode display name and message.
+                    var encodedName = name;
+                    var encodedMsg = message.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    var messageEntry = createMessageEntry(encodedName, encodedMsg);
+
+                    var messageBox = document.getElementById('messages');
+                    messageBox.appendChild(messageEntry);
+                    messageBox.scrollTop = messageBox.scrollHeight;
+                };
+                // Create a function that the hub can call to broadcast messages.
+                connection.on('sendMessage', messageCallback);
+                connection.on('echo', messageCallback);
+                connection.onclose(onConnectionError);
+            }
+
+            function onConnected(connection) {
+                console.log('connection started');
+                connection.send('sendMessage', '_SYSTEM_', username + ' JOINED');
+                document.getElementById('sendMessage').addEventListener('click', function (event) {
+                    // Call the broadcastMessage method on the hub.
+                    if (messageInput.value) {
+                        connection.send('sendMessage', username, messageInput.value);
+                    }
+
+                    // Clear text box and reset focus for next comment.
+                    messageInput.value = '';
+                    messageInput.focus();
+                    event.preventDefault();
+                });
+
+                document.getElementById('subscribegroup').addEventListener('click', function (event) {
+                    // Call the subscribeGroup method on the hub.
+                    if (messageInput.value) {
+                        connection.send('subscribeToUnitsGroup', "eyJhbGciOiJSUzI1NiIsImtpZCI6IjM1ZTkzNzc5NzY1ZGY1MDgwMTIzNzNkM2ExNjVkNjEyIiwidHlwIjoiSldUIn0.eyJuYmYiOjE1NjI5MTUyOTEsImV4cCI6MTU2MjkxODg5MSwiaXNzIjoiaHR0cHM6Ly9hcGkuZGV2LnZpc2lvbml6ZS5jbG91ZCIsImF1ZCI6WyJodHRwczovL2FwaS5kZXYudmlzaW9uaXplLmNsb3VkL3Jlc291cmNlcyIsImRldmljZS1hdXRoZW50aWNhdGlvbiIsIm5vdGlmaWNhdGlvbi1zZXR0aW5ncyIsInVzZXItbWFuYWdlbWVudCJdLCJjbGllbnRfaWQiOiJ3b2xwZXJ0aW5nZXIiLCJzdWIiOiI0ZDY2YmM2Yy1lNDI0LTQyYzktYmYwNy0xMThhODhhYzYzZjYiLCJhdXRoX3RpbWUiOjE1NjI4MzYzNTQsImlkcCI6ImxvY2FsIiwiVGVuYW50SWQiOiJkYXNnaXAiLCJVc2VySWQiOiIzIiwiRnVsbE5hbWUiOiJKb2huIEFyaXN0aXphYmFsIiwiSXNBY3RpdmUiOiJUcnVlIiwiUm9sZSI6WyJVc2VyIiwiQWRtaW4iXSwic2NvcGUiOlsib3BlbmlkIiwiZGV2aWNlLWF1dGhlbnRpY2F0aW9uIiwibm90aWZpY2F0aW9uLXNldHRpbmdzIiwidXNlci1tYW5hZ2VtZW50Il0sImFtciI6WyJwd2QiXX0.bvFwISVRC6iq1ejTjnUJE6RzKZODvZ4twC8FHlqQ_OusM9_LAvXqT54FNoOl_cC1v5Oqtq90bnGCf00WBVfCcJ3FMlGm_fwLk_G7v-A02PcxzNNpPMU_k1Km6h7K_s1_ZjG_bWrLbjS_2Gi1TQv-bx8nC9w0h8hcWAEjLvxMyxVYbtf7s9EXCxlAtwysFgcNxAfWu45LzV3Pup626Y8SxlnrTEBNtbz-5YJQ-kkQ4eybfUBzb3JFrTF84CFxRTYS3X23PwVc169eRRVEQ_ZLvyNeXMHscmkkd0CaECja8jdQUZqy6iEi-Mvd8rYLjrKrPI6BJA8Xw0mM_FOI8WVEvw");
+                    }
+
+                    // Clear text box and reset focus for next comment.
+                    messageInput.value = '';
+                    messageInput.focus();
+                    event.preventDefault();
+                });
+
+                document.getElementById('unsubscribegroup').addEventListener('click', function (event) {
+                    // Call the subscribeGroup method on the hub.
+                    if (messageInput.value) {
+                        connection.send('unsubscribeToUnitsGroup', "eyJhbGciOiJSUzI1NiIsImtpZCI6IjM1ZTkzNzc5NzY1ZGY1MDgwMTIzNzNkM2ExNjVkNjEyIiwidHlwIjoiSldUIn0.eyJuYmYiOjE1NjI5MTUyOTEsImV4cCI6MTU2MjkxODg5MSwiaXNzIjoiaHR0cHM6Ly9hcGkuZGV2LnZpc2lvbml6ZS5jbG91ZCIsImF1ZCI6WyJodHRwczovL2FwaS5kZXYudmlzaW9uaXplLmNsb3VkL3Jlc291cmNlcyIsImRldmljZS1hdXRoZW50aWNhdGlvbiIsIm5vdGlmaWNhdGlvbi1zZXR0aW5ncyIsInVzZXItbWFuYWdlbWVudCJdLCJjbGllbnRfaWQiOiJ3b2xwZXJ0aW5nZXIiLCJzdWIiOiI0ZDY2YmM2Yy1lNDI0LTQyYzktYmYwNy0xMThhODhhYzYzZjYiLCJhdXRoX3RpbWUiOjE1NjI4MzYzNTQsImlkcCI6ImxvY2FsIiwiVGVuYW50SWQiOiJkYXNnaXAiLCJVc2VySWQiOiIzIiwiRnVsbE5hbWUiOiJKb2huIEFyaXN0aXphYmFsIiwiSXNBY3RpdmUiOiJUcnVlIiwiUm9sZSI6WyJVc2VyIiwiQWRtaW4iXSwic2NvcGUiOlsib3BlbmlkIiwiZGV2aWNlLWF1dGhlbnRpY2F0aW9uIiwibm90aWZpY2F0aW9uLXNldHRpbmdzIiwidXNlci1tYW5hZ2VtZW50Il0sImFtciI6WyJwd2QiXX0.bvFwISVRC6iq1ejTjnUJE6RzKZODvZ4twC8FHlqQ_OusM9_LAvXqT54FNoOl_cC1v5Oqtq90bnGCf00WBVfCcJ3FMlGm_fwLk_G7v-A02PcxzNNpPMU_k1Km6h7K_s1_ZjG_bWrLbjS_2Gi1TQv-bx8nC9w0h8hcWAEjLvxMyxVYbtf7s9EXCxlAtwysFgcNxAfWu45LzV3Pup626Y8SxlnrTEBNtbz-5YJQ-kkQ4eybfUBzb3JFrTF84CFxRTYS3X23PwVc169eRRVEQ_ZLvyNeXMHscmkkd0CaECja8jdQUZqy6iEi-Mvd8rYLjrKrPI6BJA8Xw0mM_FOI8WVEvw");
+                    }
+
+                    // Clear text box and reset focus for next comment.
+                    messageInput.value = '';
+                    messageInput.focus();
+                    event.preventDefault();
+                });
+
+                document.getElementById('message').addEventListener('keypress', function (event) {
+                    if (event.keyCode === 13) {
+                        event.preventDefault();
+                        document.getElementById('sendmessage').click();
+                        return false;
+                    }
+                });
+                document.getElementById('echo').addEventListener('click', function (event) {
+                    // Call the echo method on the hub.
+                    connection.send('echo', username, messageInput.value);
+
+                    // Clear text box and reset focus for next comment.
+                    messageInput.value = '';
+                    messageInput.focus();
+                    event.preventDefault();
+                });
+            }
+
+            function onConnectionError(error) {
+                if (error && error.message) {
+                    console.error(error.message);
+                }
+                var modal = document.getElementById('myModal');
+                modal.classList.add('in');
+                modal.style = 'display: block;';
+            }
+
+            var connection = new signalR.HubConnectionBuilder('https://test2-vncloud.service.signalr.net/client/?hub=chathub')
+                                        .withUrl('/chathub', { accessTokenFactory: () => "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiJ1c2VyMSIsIm5iZiI6MTU2MzQ0MDI3MiwiZXhwIjoxNTYzNDQzODcyLCJpYXQiOjE1NjM0NDAyNzIsImF1ZCI6Imh0dHBzOi8vdGVzdDItdm5jbG91ZC5zZXJ2aWNlLnNpZ25hbHIubmV0L2NsaWVudC8_aHViPWNoYXRodWIifQ.7MrRtfdtKjSh7S87xgC_EoR_EldQpfg69LtsG24dqek" })
+                                        .build();
+            //If the connection is successful, that connection is passed to bindConnectionMessage, which adds event handlers for incoming content pushes to the client.
+            bindConnectionMessage(connection);
+            connection.start()
+                .then(function () {
+                    onConnected(connection);
+                })
+                .catch(function (error) {
+                    console.error(error.message);
+                });
+        });
+    </script>
+</body>
+</html>
