@@ -166,8 +166,8 @@
                 modal.style = 'display: block;';
             }
 
-            var connection = new signalR.HubConnectionBuilder('https://test2-vncloud.service.signalr.net/client/?hub=chathub')
-                                        .withUrl('/chathub', { accessTokenFactory: () => "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiJ1c2VyMSIsIm5iZiI6MTU2MzQ0MDI3MiwiZXhwIjoxNTYzNDQzODcyLCJpYXQiOjE1NjM0NDAyNzIsImF1ZCI6Imh0dHBzOi8vdGVzdDItdm5jbG91ZC5zZXJ2aWNlLnNpZ25hbHIubmV0L2NsaWVudC8_aHViPWNoYXRodWIifQ.7MrRtfdtKjSh7S87xgC_EoR_EldQpfg69LtsG24dqek" })
+            var connection = new signalR.HubConnectionBuilder()
+                                        .withUrl('https://test2-vncloud.service.signalr.net/client/?hub=chathub', { accessTokenFactory: () => "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiJ1c2VyMiIsIm5iZiI6MTU2Mzk1NDYyNCwiZXhwIjoxNTYzOTU4MjI0LCJpYXQiOjE1NjM5NTQ2MjQsImF1ZCI6Imh0dHBzOi8vdGVzdDItdm5jbG91ZC5zZXJ2aWNlLnNpZ25hbHIubmV0L2NsaWVudC8_aHViPWNoYXRodWIifQ.eAQY9mde_6YKIFsa5bSf3Y_xJvQauPs4TTeEdV8Drp8" })
                                         .build();
             //If the connection is successful, that connection is passed to bindConnectionMessage, which adds event handlers for incoming content pushes to the client.
             bindConnectionMessage(connection);

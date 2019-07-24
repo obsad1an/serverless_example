@@ -99,9 +99,14 @@ namespace Eppendorf.VNCloud.StatusDataPushService
                 var request = BuildRequest(url);
                 Thread.Sleep(3000);
 
-                if (count == 3)
+                if (count == 0)
                 {
-                    request = BuildPutRequest("https://test2-vncloud.service.signalr.net/api/v1/hubs/chathub/groups/groupname/users/user1");
+                    request = BuildDeleteRequest("https://test2-vncloud.service.signalr.net/api/v1/hubs/chathub/groups/groupname/users/user2");
+                }
+
+                if (count == 7)
+                {
+                    request = BuildPutRequest("https://test2-vncloud.service.signalr.net/api/v1/hubs/chathub/groups/groupname/users/user2");
                 }
 
                 count++;
@@ -170,6 +175,22 @@ namespace Eppendorf.VNCloud.StatusDataPushService
         private HttpRequestMessage BuildPutRequest(string url)
         {
             var request = new HttpRequestMessage(HttpMethod.Put, GetUrl(url));
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", _serviceUtils.GenerateAccessToken(url, _serverName));
+            
+            url = GetClientUrl(url, _hubName);
+
+            var client = _serviceUtils.GenerateAccessToken(url, _userId);
+
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            //request.Content = new StringContent(JsonConvert.SerializeObject(_defaultPayloadMessage), Encoding.UTF8, "application/json");
+            return request;
+        }
+
+        private HttpRequestMessage BuildDeleteRequest(string url)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Delete, GetUrl(url));
 
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", _serviceUtils.GenerateAccessToken(url, _serverName));

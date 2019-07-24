@@ -50,8 +50,8 @@ namespace Eppendorf.VNCloud.StatusDataPushService
 
             var connectionString = Configuration["SignalR.ConnectionString"];
 
-            //var client = new ClientHandler(connectionString, "chathub", "user1");
-            //client.StartAsync();
+            var client = new ClientHandler(connectionString, "chathub", "user2");
+            client.StartAsync();
             var server = new ServerHandler(connectionString, "chathub", "server");
             server.Start();
             services.AddHealthChecks();
